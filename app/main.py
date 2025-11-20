@@ -1,11 +1,7 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, APIRouter
 from fastapi.middleware.cors import CORSMiddleware
-
+from app.domain.LLM import router as llm_router
 from app.core.database import engine, Base
-
-from app.domain.chatroom import model as chatroom_model
-from app.domain.character import model as character_model
-from app.domain.episode import model as episode_model
 
 
 def create_app() -> FastAPI:
@@ -24,15 +20,15 @@ def create_app() -> FastAPI:
         version="1.0.0"
     )
 
+    api_router = APIRouter(
+        prefix="/api"
+    )
+    api_router.include_router(llm_router)
 
 
-    # 기본 헬스 체크 API
-    @app.get("/")
-    def read_root():
-        return {"status": "ok", "message": "Server is running successfully!"}
-
+    
+    app.include_router(api_router)
     return app
-
 # 앱 객체 생성
 app = create_app()
 
