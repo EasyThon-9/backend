@@ -9,4 +9,4 @@ class User(Base, TimestampMixin):
     id = Column(Integer, primary_key=True, index=True)
     email = Column(String(200))
     password = Column(String(200))
-    name = Column(String(200))
+    name = Column(String(255))
