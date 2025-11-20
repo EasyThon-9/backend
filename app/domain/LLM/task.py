@@ -1,13 +1,18 @@
 from app.core.celery_app import celery_app
 from app.core.database import SessionLocal
 from app.core.redis import get_sync_redis
+from app.core.config import settings
 from app.domain.character.model import CharacterInfo
 from app.domain.episode.model import Episode
 import openai
 import json
-import os
+import logging
 
-openai.api_key = os.getenv("LLM_API_KEY")
+# 로거 설정
+logger = logging.getLogger(__name__)
+
+# OpenAI API 키 설정
+openai.api_key = settings.LLM_API_KEY
 
 @celery_app.task
 def get_llm_message(character_id: int, episode_id: int, user_email: str, user_id: int):
@@ -57,7 +62,7 @@ def get_llm_message(character_id: int, episode_id: int, user_email: str, user_id
                 full_response += chunk
                 
                 # Redis 채널로 직접 발행
-                channel_name = f"chat_{episode_id}"
+                channel_name = f"chat_{user_id}"
                 message_data = {
                     "type": "llm_talk_message",
                     "message": chunk
@@ -72,7 +77,10 @@ def get_llm_message(character_id: int, episode_id: int, user_email: str, user_id
         return full_response
 
     except Exception as e:
-        print(f"Error in task: {e}")
+        logger.error(f"Error in get_llm_message task: {e}", exc_info=True)
+        raise
     finally:
+        if redis_client:
+            redis_client.close()
         db.close()
 

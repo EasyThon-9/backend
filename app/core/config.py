@@ -16,6 +16,9 @@ class Settings(BaseSettings):
 
     CELERY_BROKER_URL: str = os.getenv("CELERY_BROKER_URL", "amqp://guest:guest@rabbitmq:5672/")
     CELERY_RESULT_BACKEND: str = os.getenv("CELERY_RESULT_BACKEND", "redis://redis:6379/0")
+    
+    # LLM 설정
+    LLM_API_KEY: str
 
     
     # SQLAlchemy URL 생성
