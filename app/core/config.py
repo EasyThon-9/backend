@@ -13,6 +13,10 @@ class Settings(BaseSettings):
     # Redis 설정
     REDIS_HOST: str = "redis"
     REDIS_PORT: int = 6379
+
+    CELERY_BROKER_URL: str = os.getenv("CELERY_BROKER_URL", "amqp://guest:guest@rabbitmq:5672/")
+    CELERY_RESULT_BACKEND: str = os.getenv("CELERY_RESULT_BACKEND", "redis://redis:6379/0")
+
     
     # SQLAlchemy URL 생성
     @property
