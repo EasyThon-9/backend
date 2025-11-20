@@ -53,6 +53,16 @@ class ChatRoomRepository:
         return db.query(ChatRoom).filter(ChatRoom.id == room_id).first()
     
     @staticmethod
+    def get_by_id_and_user_id(db: Session, room_id: int, user_id: int) -> Optional[ChatRoom]:
+        """ID와 사용자 ID로 채팅방 조회 (소유자 확인용)"""
+        return db.query(ChatRoom).filter(
+            and_(
+                ChatRoom.id == room_id,
+                ChatRoom.user_id == user_id
+            )
+        ).first()
+    
+    @staticmethod
     def delete_result(db: Session, room_id: int) -> bool:
         """채팅방 결과 삭제"""
         room = db.query(ChatRoom).filter(ChatRoom.id == room_id).first()

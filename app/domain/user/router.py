@@ -139,7 +139,30 @@ async def logout(
     
     try:
         # Refresh 토큰 검증
-        payload = decode_token(request.refresh_token, "refresh")
+        refresh_payload = decode_token(request.refresh_token, "refresh")
+        
+        # Refresh 토큰에서 사용자 ID 추출
+        refresh_sub = refresh_payload.get("sub")
+        if not refresh_sub:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid refresh token: subject not found."
+            )
+        
+        try:
+            refresh_user_id: int = int(refresh_sub)
+        except (ValueError, TypeError):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid refresh token: subject must be an integer."
+            )
+        
+        # Access Token의 사용자 ID와 Refresh Token의 사용자 ID 일치 확인
+        if refresh_user_id != user_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="토큰 소유자가 일치하지 않습니다."
+            )
         
         # 사용자 정보 가져오기
         user = UserRepository.get_by_id(db, user_id)
@@ -149,10 +172,20 @@ async def logout(
                 detail="사용자를 찾을 수 없습니다."
             )
         
+        # Refresh 토큰 만료 시간 계산 (블랙리스트 TTL용)
+        exp = refresh_payload.get("exp")
+        if exp:
+            from datetime import datetime, timezone
+            current_time = datetime.now(timezone.utc).timestamp()
+            ttl = int(exp - current_time)
+            if ttl > 0:
+                # Refresh 토큰을 블랙리스트에 추가
+                blacklist_key = f"blacklist:refresh:{request.refresh_token}"
+                await redis_client.setex(blacklist_key, ttl, "1")
+        
         # Redis에서 사용자 관련 키 삭제
         async for key in redis_client.scan_iter(match=f"*{user.email}*"):
             await redis_client.delete(key)
-        
         
         return schemas.LogoutResponse(
             message="로그아웃되었습니다."
@@ -218,7 +251,7 @@ async def get_user_detail_result(
     db: Session = Depends(get_db)
 ):
     """사용자 결과 상세 조회 API"""
-    room = ChatRoomRepository.get_by_id(db, room_id)
+    room = ChatRoomRepository.get_by_id_and_user_id(db, room_id, user_id)
     
     if not room:
         raise HTTPException(
@@ -251,7 +284,7 @@ async def delete_user_result(
     db: Session = Depends(get_db)
 ):
     """결과 삭제 API"""
-    room = ChatRoomRepository.get_by_id(db, room_id)
+    room = ChatRoomRepository.get_by_id_and_user_id(db, room_id, user_id)
     
     if not room:
         raise HTTPException(

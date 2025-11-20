@@ -68,5 +68,20 @@ async def get_current_user_id(
     """현재 인증된 사용자의 ID를 반환합니다."""
     token = credentials.credentials
     payload = decode_token(token, "access")
-    user_id: int = int(payload.get("sub"))
+    
+    sub = payload.get("sub")
+    if not sub:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token: subject not found."
+        )
+    
+    try:
+        user_id: int = int(sub)
+    except (ValueError, TypeError):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token: subject must be an integer."
+        )
+    
     return user_id
