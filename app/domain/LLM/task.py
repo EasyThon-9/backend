@@ -25,7 +25,7 @@ def get_llm_message(character_id: int, episode_id: int, user_email: str, user_id
         character = db.query(CharacterInfo).filter(CharacterInfo.id == character_id).first()
         
         if not episode or not character:
-            return "Data not found"
+            raise ValueError(f"Data not found for episode_id={episode_id} or character_id={character_id}")
 
         episode_content = episode.content
         character_script = character.script

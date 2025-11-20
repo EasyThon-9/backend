@@ -1,6 +1,7 @@
 from fastapi import FastAPI, APIRouter
 from fastapi.middleware.cors import CORSMiddleware
 from app.domain.LLM import router as llm_router
+from app.domain.user import router as user_router
 from app.core.database import engine, Base
 
 
@@ -23,22 +24,7 @@ def create_app() -> FastAPI:
     api_router = APIRouter(
         prefix="/api"
     )
-    api_router.include_router(llm_router)
-
-
-    
+    api_router.include_router(llm_router, prefix="/llm", tags=["llm"])
+    api_router.include_router(user_router, prefix="/user", tags=["user"])
     app.include_router(api_router)
     return app
-# 앱 객체 생성
-app = create_app()
-
-# 직접 실행 시 (python app/main.py)
-if __name__ == "__main__":
-    import uvicorn
-    
-    uvicorn.run(
-        "main:app", 
-        host="0.0.0.0", 
-        port=8000, 
-        reload=True
-    )
