@@ -3,7 +3,6 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.database import engine, Base
 
-from app.domain.user import model as user_model
 from app.domain.chatroom import model as chatroom_model
 from app.domain.character import model as character_model
 from app.domain.episode import model as episode_model
