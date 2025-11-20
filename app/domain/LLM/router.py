@@ -33,12 +33,9 @@ async def request_llm_message(
         await redis_client.delete(episode_key)
     await redis_client.set(episode_key, request.episode_id)
     
-    # count 증가
+    # count 증가 (INCR은 키가 없을 경우 0으로 초기화 후 1 증가)
     count_key = f"count:{user_email}"
-    if await redis_client.exists(count_key):
-        await redis_client.incr(count_key)
-    else:
-        await redis_client.set(count_key, 1)
+    await redis_client.incr(count_key)
         
     # character_id 저장 (테스트 코드 참조)
     char_key = f"character_id:{user_email}"
