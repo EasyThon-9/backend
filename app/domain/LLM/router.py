@@ -1,4 +1,6 @@
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, status, HTTPException
+from fastapi.concurrency import run_in_threadpool
+from sqlalchemy.orm import Session
 from app.domain.LLM.schemas import (
     GetLLMMessageRequest, 
     GetLLMMessageResponse,
@@ -7,12 +9,22 @@ from app.domain.LLM.schemas import (
 )
 from app.domain.LLM.task import get_llm_message, get_gpt_feedback, get_gpt_result
 from app.core.redis import get_redis_pool
+from app.core.database import SessionLocal
+from app.domain.user.repository import UserRepository, ChatRoomRepository
 import redis.asyncio as redis
 
 router = APIRouter()
 
 def get_current_user_info():
     return {"email": "testuser@example.com", "id": 1}
+
+def get_db():
+    """데이터베이스 세션 의존성"""
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
 
 async def get_redis_client() -> redis.Redis:
     """Redis 클라이언트 의존성 (FastAPI의 의존성 주입 사용)"""
@@ -77,19 +89,78 @@ async def request_gpt_feedback(
 
 
 @router.get("/results", response_model=GetLLMResultResponse, status_code=status.HTTP_200_OK)
-def request_gpt_result(
+async def request_gpt_result(
     user_info: dict = Depends(get_current_user_info), # Auth Dependency Injection
+    db: Session = Depends(get_db),
+    redis_client: redis.Redis = Depends(get_redis_client)
 ):
     """
-    GPT의 최종 피드백을 가져오는 API
+    대화 종료 시 피드백을 출력하고 저장하는 API
     
-    모든 피드백을 종합하여 최종 결과를 생성하고 반환합니다.
+    Redis에서 room_id를 가져오고, GPT 결과를 생성하여 데이터베이스에 저장한 후 반환합니다.
     """
     user_email = user_info["email"]
+    user_id = user_info["id"]
     
-    response_text = get_gpt_result(user_email)
+    # Redis에서 room_id 가져오기
+    room_id_key = f"room_id:{user_email}"
+    room_id = await redis_client.get(room_id_key)
     
-    return {"result": response_text}
+    if room_id is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="room_id not found in Redis"
+        )
+    
+    # room_id를 int로 변환 (예외 처리 포함)
+    try:
+        room_id = int(room_id)
+    except (ValueError, TypeError):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid room_id in Redis"
+        )
+    
+    # GPT 결과 요청 (Celery 태스크를 비동기로 실행)
+    task = get_gpt_result.apply_async(args=[user_email])
+    result_text = await run_in_threadpool(task.get)
+    
+    # 사용자 정보 가져오기
+    user = UserRepository.get_by_id(db, user_id)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+    
+    # 데이터베이스에 피드백 저장 (소유자 검증 포함)
+    chat_room_updated = ChatRoomRepository.update_result(db, room_id, user_id, result_text)
+    if not chat_room_updated:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Chat room not found"
+        )
+    
+    # Redis에서 사용자 관련 키 명시적으로 삭제 (성능 최적화)
+    keys_to_delete = [
+        f"room_id:{user_email}",
+        f"episode_id:{user_email}",
+        f"count:{user_email}",
+        f"character_id:{user_email}",
+        f"feedbacks:{user_email}",
+        f"talk_content:{user_email}",
+        f"memory_episode:{user_email}",
+    ]
+    # 존재하는 키만 삭제
+    for key in keys_to_delete:
+        if await redis_client.exists(key):
+            await redis_client.delete(key)
+    
+    return {
+        "result": result_text,
+        "name": user.name,
+        "room_id": room_id
+    }
 
 
 

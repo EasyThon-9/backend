@@ -13,3 +13,5 @@ class GetLLMFeedbackResponse(BaseModel):
 
 class GetLLMResultResponse(BaseModel):
     result: str
+    name: str
+    room_id: int
