@@ -46,7 +46,8 @@ async def request_llm_message(
         character_id=request.character_id, 
         episode_id=request.episode_id, 
         user_email=user_email,
-        user_id=user_id
+        user_id=user_id,
+        user_message=request.user_message
     )
     
     return {"task_id": task.id}
