@@ -1,6 +1,11 @@
 from fastapi import APIRouter, Depends, status
-from app.domain.LLM.schemas import GetLLMMessageRequest, GetLLMMessageResponse
-from app.domain.LLM.task import get_llm_message
+from app.domain.LLM.schemas import (
+    GetLLMMessageRequest, 
+    GetLLMMessageResponse,
+    GetLLMFeedbackResponse,
+    GetLLMResultResponse
+)
+from app.domain.LLM.task import get_llm_message, get_gpt_feedback, get_gpt_result
 from app.core.redis import get_redis_pool
 import redis.asyncio as redis
 
@@ -51,6 +56,41 @@ async def request_llm_message(
     )
     
     return {"task_id": task.id}
+
+
+@router.get("/feedbacks", response_model=GetLLMFeedbackResponse, status_code=status.HTTP_202_ACCEPTED)
+async def request_gpt_feedback(
+    user_info: dict = Depends(get_current_user_info), # Auth Dependency Injection
+):
+    """
+    GPT의 피드백을 생성하는 API
+    
+    현재 대화 내역을 분석하여 사용자의 응답에 대한 비판적 피드백을 생성합니다.
+    Celery 태스크를 비동기로 실행하고 task_id를 반환합니다.
+    """
+    user_email = user_info["email"]
+    
+    # Celery Task 실행
+    task = get_gpt_feedback.delay(user_email)
+    
+    return {"task_id": task.id}
+
+
+@router.get("/results", response_model=GetLLMResultResponse, status_code=status.HTTP_200_OK)
+async def request_gpt_result(
+    user_info: dict = Depends(get_current_user_info), # Auth Dependency Injection
+):
+    """
+    GPT의 최종 피드백을 가져오는 API
+    
+    모든 피드백을 종합하여 최종 결과를 생성하고 반환합니다.
+    주의: Celery 태스크를 동기로 호출하므로 블로킹이 발생할 수 있습니다.
+    """
+    user_email = user_info["email"]
+    
+    response_text = get_gpt_result(user_email)
+    
+    return {"result": response_text}
 
 
 
