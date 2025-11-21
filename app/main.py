@@ -2,6 +2,7 @@ from fastapi import FastAPI, APIRouter
 from fastapi.middleware.cors import CORSMiddleware
 from app.domain.LLM import router as llm_router
 from app.domain.user import router as user_router
+from app.domain.chatroom import router as chatroom_router
 from app.core.database import engine, Base
 
 
@@ -26,5 +27,6 @@ def create_app() -> FastAPI:
     )
     api_router.include_router(llm_router, prefix="/llm", tags=["llm"])
     api_router.include_router(user_router, prefix="/user", tags=["user"])
+    api_router.include_router(chatroom_router, prefix="/chatroom", tags=["chatroom"])
     app.include_router(api_router)
     return app
