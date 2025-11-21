@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, status, HTTPException
+from fastapi.concurrency import run_in_threadpool
 from sqlalchemy.orm import Session
 from app.domain.LLM.schemas import (
     GetLLMMessageRequest, 
@@ -111,11 +112,18 @@ async def request_gpt_result(
             detail="room_id not found in Redis"
         )
     
-    room_id = int(room_id)
+    # room_id를 int로 변환 (예외 처리 포함)
+    try:
+        room_id = int(room_id)
+    except (ValueError, TypeError):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid room_id in Redis"
+        )
     
-    # GPT 결과 요청 (Celery 태스크를 동기적으로 실행)
-    task_result = get_gpt_result.apply(args=[user_email])
-    result_text = task_result.get()
+    # GPT 결과 요청 (Celery 태스크를 비동기로 실행)
+    task = get_gpt_result.apply_async(args=[user_email])
+    result_text = await run_in_threadpool(task.get)
     
     # 사용자 정보 가져오기
     user = UserRepository.get_by_id(db, user_id)
@@ -125,17 +133,28 @@ async def request_gpt_result(
             detail="User not found"
         )
     
-    # 데이터베이스에 피드백 저장
-    chat_room_updated = ChatRoomRepository.update_result(db, room_id, result_text)
+    # 데이터베이스에 피드백 저장 (소유자 검증 포함)
+    chat_room_updated = ChatRoomRepository.update_result(db, room_id, user_id, result_text)
     if not chat_room_updated:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Chat room not found"
         )
     
-    # Redis에서 사용자 관련 키 삭제
-    async for key in redis_client.scan_iter(match=f"*{user_email}*"):
-        await redis_client.delete(key)
+    # Redis에서 사용자 관련 키 명시적으로 삭제 (성능 최적화)
+    keys_to_delete = [
+        f"room_id:{user_email}",
+        f"episode_id:{user_email}",
+        f"count:{user_email}",
+        f"character_id:{user_email}",
+        f"feedbacks:{user_email}",
+        f"talk_content:{user_email}",
+        f"memory_episode:{user_email}",
+    ]
+    # 존재하는 키만 삭제
+    for key in keys_to_delete:
+        if await redis_client.exists(key):
+            await redis_client.delete(key)
     
     return {
         "result": result_text,

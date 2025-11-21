@@ -73,9 +73,11 @@ class ChatRoomRepository:
         return False
     
     @staticmethod
-    def update_result(db: Session, room_id: int, result: str) -> bool:
-        """채팅방 결과 업데이트"""
-        room = db.query(ChatRoom).filter(ChatRoom.id == room_id).first()
+    def update_result(db: Session, room_id: int, user_id: int, result: str) -> bool:
+        """채팅방 결과 업데이트 (소유자 검증 포함)"""
+        room = db.query(ChatRoom).filter(
+            and_(ChatRoom.id == room_id, ChatRoom.user_id == user_id)
+        ).first()
         if room:
             room.result = result
             db.commit()
