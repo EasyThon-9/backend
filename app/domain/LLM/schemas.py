@@ -8,6 +8,8 @@ class GetLLMMessageRequest(BaseModel):
 class GetLLMMessageResponse(BaseModel):
     task_id: str
 
-# 피드백이나 결과 관련 스키마가 있다면 여기에 추가
-class GetLLMFeedbackRequest(BaseModel):
-    pass
+class GetLLMFeedbackResponse(BaseModel):
+    task_id: str
+
+class GetLLMResultResponse(BaseModel):
+    result: str
