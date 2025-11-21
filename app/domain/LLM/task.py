@@ -199,22 +199,9 @@ def get_gpt_feedback(user_email: str):
         
         result = response.choices[0].message["content"].strip()
         
-        # Redis에 피드백 저장 (feedback:{user_email}-{count} 형식)
-        feedback_pattern = f"feedback:{user_email}-*"
-        feedback_keys = redis_client.keys(feedback_pattern)
-        
-        if feedback_keys:
-            # 기존 피드백이 있으면 최대 카운트 + 1
-            max_feedback_count = max(
-                int(key.decode().split('-')[-1]) if isinstance(key, bytes) else int(key.split('-')[-1])
-                for key in feedback_keys
-            )
-            feedback_count = max_feedback_count + 1
-        else:
-            feedback_count = 1
-        
-        redis_key = f"feedback:{user_email}-{feedback_count}"
-        redis_client.set(redis_key, result)
+        # Redis에 피드백 저장 (List 사용)
+        redis_key = f"feedbacks:{user_email}"
+        redis_client.rpush(redis_key, result)
         
         # Redis pub/sub으로 피드백 전송
         channel_name = f"chat_{user_id}"
@@ -268,25 +255,18 @@ def get_gpt_result(user_email: str):
         
         character_script = character.script
         
-        # Redis에서 모든 피드백 가져오기
-        feedback_pattern = f"feedback:{user_email}-*"
-        feedback_keys = redis_client.keys(feedback_pattern)
+        # Redis에서 모든 피드백 가져오기 (List 사용)
+        feedback_key = f"feedbacks:{user_email}"
+        feedback_values = redis_client.lrange(feedback_key, 0, -1)
         
-        if not feedback_keys:
+        if not feedback_values:
             raise ValueError(f"No feedbacks found for user: {user_email}")
         
-        # 피드백을 카운트 순으로 정렬
-        feedback_items = []
-        for key in feedback_keys:
-            key_str = key.decode() if isinstance(key, bytes) else key
-            count = int(key_str.split('-')[-1])
-            value = redis_client.get(key)
-            if value:
-                value_str = value.decode() if isinstance(value, bytes) else value
-                feedback_items.append((count, value_str))
-        
-        feedback_items.sort(key=lambda x: x[0])
-        feedback_values = [item[1] for item in feedback_items]
+        # 바이트를 문자열로 변환 (필요한 경우)
+        feedback_values = [
+            value.decode() if isinstance(value, bytes) else value
+            for value in feedback_values
+        ]
         feedback_values_str = ", ".join(feedback_values)
         
         # GPT-4o로 최종 피드백 생성

@@ -77,14 +77,13 @@ async def request_gpt_feedback(
 
 
 @router.get("/results", response_model=GetLLMResultResponse, status_code=status.HTTP_200_OK)
-async def request_gpt_result(
+def request_gpt_result(
     user_info: dict = Depends(get_current_user_info), # Auth Dependency Injection
 ):
     """
     GPT의 최종 피드백을 가져오는 API
     
     모든 피드백을 종합하여 최종 결과를 생성하고 반환합니다.
-    주의: Celery 태스크를 동기로 호출하므로 블로킹이 발생할 수 있습니다.
     """
     user_email = user_info["email"]
     
