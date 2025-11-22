@@ -15,3 +15,8 @@ class GetLLMResultResponse(BaseModel):
     result: str
     name: str
     room_id: int
+
+class TaskStatusResponse(BaseModel):
+    task_id: str
+    status: str
+    result: str = None

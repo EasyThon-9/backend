@@ -5,12 +5,14 @@ from app.domain.LLM.schemas import (
     GetLLMMessageRequest, 
     GetLLMMessageResponse,
     GetLLMFeedbackResponse,
-    GetLLMResultResponse
+    GetLLMResultResponse,
+    TaskStatusResponse
 )
 from app.domain.LLM.task import get_llm_message, get_gpt_feedback, get_gpt_result
 from app.core.dependencies import get_db, get_redis_client
 from app.core.security import get_current_user_id
 from app.domain.user.repository import UserRepository, ChatRoomRepository
+from celery.result import AsyncResult
 import redis.asyncio as redis
 
 router = APIRouter()
@@ -156,4 +158,29 @@ async def request_gpt_result(
     }
 
 
+@router.get("/task/{task_id}", response_model=TaskStatusResponse, status_code=status.HTTP_200_OK)
+async def get_task_status(
+    task_id: str,
+    user_id: int = Depends(get_current_user_id)
+):
+    """
+    Celery task 상태 및 결과 조회
+    
+    task_id로 작업 상태(PENDING/SUCCESS/FAILURE)와 결과를 확인합니다.
+    """
+    task_result = AsyncResult(task_id)
+    
+    response = {
+        "task_id": task_id,
+        "status": task_result.status,
+        "result": None
+    }
+    
+    if task_result.ready():
+        if task_result.successful():
+            response["result"] = task_result.result
+        else:
+            response["result"] = str(task_result.info)
+    
+    return response
 
