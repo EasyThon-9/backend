@@ -22,6 +22,15 @@ def create_app() -> FastAPI:
         version="1.0.0"
     )
 
+    # CORS 설정
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],  # 프로덕션에서는 특정 도메인으로 제한
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+
     api_router = APIRouter(
         prefix="/api"
     )
@@ -30,3 +39,5 @@ def create_app() -> FastAPI:
     api_router.include_router(chatroom_router, prefix="/chatroom", tags=["chatroom"])
     app.include_router(api_router)
     return app
+
+app = create_app()

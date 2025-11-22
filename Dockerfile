@@ -18,7 +18,8 @@ COPY requirements.txt /tmp/requirements.txt
 # pip 기반으로 의존성 설치
 RUN pip install --no-cache-dir --upgrade pip \
     && pip install --no-cache-dir -r /tmp/requirements.txt \
-    && pip install --no-cache-dir gunicorn
+    && pip install --no-cache-dir gunicorn \
+    && pip install --no-cache-dir langchain-community==0.3.12 numpy==1.26.4
 
 # 애플리케이션 코드 복사
 COPY . .
