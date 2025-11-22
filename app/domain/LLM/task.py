@@ -81,38 +81,24 @@ def get_llm_message(
 
         ai_message = response.text.strip()
 
-        # Redis 키 정리
-        if redis_client.exists(f"episode_id:{user_email}"):
-            redis_client.delete(f"episode_id:{user_email}")
-        
-        if redis_client.exists(f"talk_content:{user_email}"):
-            redis_client.delete(f"talk_content:{user_email}")
-
-        # 스트리밍 응답 처리 및 Redis Publish
-        full_response = ""
-        for response in stream:
-            if "delta" in response.choices[0] and "content" in response.choices[0]["delta"]:
-                chunk = response.choices[0]["delta"]["content"]
-                full_response += chunk
-                
-                # Redis 채널로 직접 발행
-                channel_name = f"chat_{user_id}"
-                message_data = {
-                    "type": "llm_talk_message",
-                    "message": chunk
-                }
-                redis_client.publish(channel_name, json.dumps(message_data))
+        # Redis 채널로 발행 (WebSocket 전송)
+        channel_name = f"chat_{user_id}"
+        message_data = {
+            "type": "llm_talk_message",
+            "message": ai_message
+        }
+        redis_client.publish(channel_name, json.dumps(message_data))
 
         # 결과 저장 (Redis)
-        redis_client.set(f"talk_content:{user_email}", full_response)
+        redis_client.set(f"talk_content:{user_email}", ai_message)
 
         # LangChain 메모리에 대화 내용 저장
-        if user_message and full_response:
-            append_memory(user_email, user_message, full_response)
+        if user_message and ai_message:
+            append_memory(user_email, user_message, ai_message)
 
         # TTS 로직 추가 예정
 
-        return full_response
+        return ai_message
 
     except Exception as e:
         logger.error(f"Error in get_llm_message task: {e}", exc_info=True)
