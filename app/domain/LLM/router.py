@@ -8,30 +8,12 @@ from app.domain.LLM.schemas import (
     GetLLMResultResponse
 )
 from app.domain.LLM.task import get_llm_message, get_gpt_feedback, get_gpt_result
-from app.core.redis import get_redis_pool
-from app.core.database import SessionLocal
+from app.core.dependencies import get_db, get_redis_client
 from app.core.security import get_current_user_id
 from app.domain.user.repository import UserRepository, ChatRoomRepository
 import redis.asyncio as redis
 
 router = APIRouter()
-
-def get_db():
-    """데이터베이스 세션 의존성"""
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
-
-async def get_redis_client() -> redis.Redis:
-    """Redis 클라이언트 의존성 (FastAPI의 의존성 주입 사용)"""
-    redis_client = await get_redis_pool()
-    try:
-        yield redis_client
-    finally:
-        # 연결을 풀에 반환 (풀링을 사용하므로 연결이 풀에 반환됨)
-        await redis_client.aclose()
 
 @router.post("/message", response_model=GetLLMMessageResponse, status_code=status.HTTP_202_ACCEPTED)
 async def request_llm_message(

@@ -10,19 +10,10 @@ from app.domain.chatroom.schemas import (
 )
 from app.domain.chatroom.repository import ChatRoomRepository, ChatMessageRepository
 from app.domain.chatroom.model import MessageType
-from app.core.database import SessionLocal
+from app.core.dependencies import get_db
 from app.core.security import get_current_user_id
 
 router = APIRouter()
-
-
-def get_db():
-    """데이터베이스 세션 의존성"""
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
 
 
 @router.post("/messages", response_model=SaveChatMessageResponse, status_code=status.HTTP_201_CREATED)
