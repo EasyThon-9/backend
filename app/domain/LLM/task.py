@@ -11,15 +11,15 @@ from app.domain.LLM.memory import (
     get_user_memory,
     reset_user_memory,
 )
-import openai
+import google.generativeai as genai
 import json
 import logging
 
 # 로거 설정
 logger = logging.getLogger(__name__)
 
-# OpenAI API 키 설정
-openai.api_key = settings.LLM_API_KEY
+# Gemini API 키 설정
+genai.configure(api_key=settings.LLM_API_KEY)
 
 @celery_app.task
 def get_llm_message(
@@ -52,28 +52,34 @@ def get_llm_message(
         get_user_memory(user_email)  # 메모리 초기화 보장
 
         conversation_history = build_conversation_history(user_email)
-        prompt_messages = [
-            {
-                "role": "system",
-                "content": (
-                    f"You are character with {character_script} when a subordinate who is dealing with is {episode_content}. "
-                    "What are you going to say in this situation? "
-                    "You must provide answer in Korean. "
-                    "Generate answers in 40 Korean characters."
-                ),
-            },
-            *conversation_history,
-        ]
-
-        if user_message:
-            prompt_messages.append({"role": "user", "content": user_message})
-
-        # OpenAI Streaming 호출
-        stream = openai.ChatCompletion.create(
-            model="gpt-4o",
-            messages=prompt_messages,
-            stream=True,
+        
+        # Gemini 프롬프트 구성
+        system_prompt = (
+            f"You are character with {character_script} when a subordinate who is dealing with is {episode_content}. "
+            "What are you going to say in this situation? "
+            "You must provide answer in Korean. "
+            "Generate answers in 40 Korean characters."
         )
+        
+        # 대화 히스토리를 텍스트로 변환
+        history_text = "\n".join([
+            f"{'User' if msg['role'] == 'user' else 'Assistant'}: {msg['content']}"
+            for msg in conversation_history
+        ])
+        
+        full_prompt = f"{system_prompt}\n\n{history_text}\n\nUser: {user_message}\nAssistant:"
+
+        # Gemini API 호출
+        model = genai.GenerativeModel('gemini-1.5-pro')
+        response = model.generate_content(
+            full_prompt,
+            generation_config=genai.types.GenerationConfig(
+                max_output_tokens=200,
+                temperature=0.7,
+            )
+        )
+
+        ai_message = response.text.strip()
 
         # Redis 키 정리
         if redis_client.exists(f"episode_id:{user_email}"):
