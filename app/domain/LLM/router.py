@@ -59,7 +59,7 @@ async def request_llm_message(
     count_key = f"count:{user_email}"
     await redis_client.incr(count_key)
         
-    # character_id 저장 (테스트 코드 참조)
+    # character_id 저장
     char_key = f"character_id:{user_email}"
     await redis_client.set(char_key, request.character_id)
 
