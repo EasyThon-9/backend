@@ -70,7 +70,7 @@ def get_llm_message(
         full_prompt = f"{system_prompt}\n\n{history_text}\n\nUser: {user_message}\nAssistant:"
 
         # Gemini API 호출
-        model = genai.GenerativeModel('gemini-1.5-pro')
+        model = genai.GenerativeModel('gemini-2.5-flash-lite')
         response = model.generate_content(
             full_prompt,
             generation_config=genai.types.GenerationConfig(
