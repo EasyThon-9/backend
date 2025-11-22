@@ -32,11 +32,31 @@ async def register_user(
 ):
     """회원가입 API"""
     try:
+        # Pydantic 모델에서 직접 값 추출 (str() 변환은 passlib에서 처리)
+        # request.password는 이미 Pydantic에 의해 str로 검증됨
+        email = request.email
+        password = request.password  # 이미 str 타입으로 검증됨
+        name = request.name
+        
+        # None 및 타입 검증
+        if not email or not password or not name:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="이메일, 비밀번호, 이름은 필수입니다"
+            )
+        
+        # password가 실제 문자열인지 확인
+        if not isinstance(password, str):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"비밀번호는 문자열이어야 합니다. 현재 타입: {type(password)}"
+            )
+        
         user = UserService.register_user(
             db=db,
-            email=request.email,
-            password=request.password,
-            name=request.name
+            email=email,
+            password=password,
+            name=name
         )
         return schemas.UserRegistrationResponse(
             message="회원가입에 성공하였습니다."
@@ -45,6 +65,12 @@ async def register_user(
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail=str(e)
+        )
+    except Exception as e:
+        # 예상치 못한 에러 처리
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"회원가입 처리 중 오류가 발생했습니다: {str(e)}"
         )
 
 
@@ -168,8 +194,10 @@ async def logout(
         async for key in redis_client.scan_iter(match=f"*{user.email}*"):
             await redis_client.delete(key)
         
-        # 204 No Content는 본문을 반환하지 않음
-        return None
+        # 로그아웃 성공 응답 반환
+        return schemas.LogoutResponse(
+            message="로그아웃에 성공하였습니다."
+        )
     except HTTPException:
         raise
     except Exception as e:

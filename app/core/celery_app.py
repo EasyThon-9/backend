@@ -15,4 +15,6 @@ celery_app.conf.update(
     accept_content=["json"],
     timezone="Asia/Seoul",
     enable_utc=True,
+    # Task auto-discovery를 위한 설정
+    include=["app.domain.LLM.task"],
 )

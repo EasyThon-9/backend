@@ -15,7 +15,14 @@ class UserService:
         if UserRepository.exists_by_email(db, email):
             raise ValueError("이미 존재하는 이메일입니다")
         
-        # 비밀번호 해시화
+        # 비밀번호 타입 및 None 검증
+        if password is None:
+            raise ValueError("비밀번호는 필수입니다")
+        
+        if not isinstance(password, str):
+            raise ValueError(f"비밀번호는 문자열이어야 합니다. 현재 타입: {type(password)}")
+        
+        # 비밀번호 해시화 (get_password_hash에서 72바이트 제한 처리)
         hashed_password = get_password_hash(password)
         
         # 사용자 생성

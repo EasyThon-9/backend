@@ -8,5 +8,5 @@ class User(Base, TimestampMixin):
 
     id = Column(Integer, primary_key=True, index=True)
     email = Column(String(200))
-    password = Column(String(200))
+    password = Column(String(255))  # 해시값 저장을 위해 255로 변경
     name = Column(String(255))
