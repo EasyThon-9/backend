@@ -4,9 +4,9 @@ from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
     # Database 설정
-    MYSQL_USER: str = "appuser"
-    MYSQL_PASSWORD: str = "apppassword"
-    MYSQL_DATABASE: str = "easython"
+    MYSQL_USER: str = "rumz"
+    MYSQL_PASSWORD: str = "rumzpassword"
+    MYSQL_DATABASE: str = "rumz"
     MYSQL_HOST: str = "mysql"
     MYSQL_PORT: int = 3306
     
