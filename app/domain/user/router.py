@@ -119,7 +119,8 @@ async def login(
 
 @router.post(
     "/logout",
-    status_code=status.HTTP_204_NO_CONTENT,
+    response_model=schemas.LogoutResponse,
+    status_code=status.HTTP_200_OK,
     summary="로그아웃",
     description="리프레시 토큰을 무효화하여 로그아웃합니다."
 )

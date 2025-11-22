@@ -22,6 +22,7 @@ def create_app() -> FastAPI:
         version="1.0.0"
     )
 
+
     # 루트 경로 - 헬스 체크용
     @app.get("/")
     async def root():
@@ -39,6 +40,15 @@ def create_app() -> FastAPI:
             "service": "EasyThon Backend"
         }
 
+    # CORS 설정
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],  # 프로덕션에서는 특정 도메인으로 제한
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+
     api_router = APIRouter(
         prefix="/api"
     )
@@ -49,5 +59,5 @@ def create_app() -> FastAPI:
     return app
 
 
-# ASGI 앱을 위한 모듈 레벨 app 변수
 app = create_app()
+
