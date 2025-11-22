@@ -16,3 +16,6 @@ celery_app.conf.update(
     timezone="Asia/Seoul",
     enable_utc=True,
 )
+
+# 3. Task 자동 검색
+celery_app.autodiscover_tasks(['app.domain.LLM'])
