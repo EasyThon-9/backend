@@ -49,15 +49,6 @@ def create_app() -> FastAPI:
     api_router = APIRouter(
         prefix="/api"
     )
-    
-    # /api/health 엔드포인트
-    @api_router.get("/health")
-    async def api_health_check():
-        return {
-            "status": "healthy",
-            "service": "EasyThon Backend API"
-        }
-    
     api_router.include_router(llm_router, prefix="/llm", tags=["llm"])
     api_router.include_router(user_router, prefix="/user", tags=["user"])
     api_router.include_router(chatroom_router, prefix="/chatroom", tags=["chatroom"])
