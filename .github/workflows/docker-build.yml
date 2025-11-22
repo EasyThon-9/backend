@@ -19,6 +19,9 @@ jobs:
       id: tag
       run: echo "IMAGE_TAG=$(echo ${{ github.sha }} | cut -c1-7)" >> $GITHUB_OUTPUT
     
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+    
     - name: Log in to GitHub Container Registry
       uses: docker/login-action@v3
       with:
@@ -32,6 +35,8 @@ jobs:
         context: .
         platforms: linux/amd64
         push: true
+        cache-from: type=registry,ref=ghcr.io/easython-9/rumz-backend:buildcache
+        cache-to: type=registry,ref=ghcr.io/easython-9/rumz-backend:buildcache,mode=max
         tags: |
           ghcr.io/easython-9/rumz-backend:${{ steps.tag.outputs.IMAGE_TAG }}
           ghcr.io/easython-9/rumz-backend:latest

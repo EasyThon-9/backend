@@ -12,9 +12,6 @@ def create_app() -> FastAPI:
     앱의 설정, 미들웨어, 라우터 등을 한 곳에서 관리합니다.
     """
     
-    # DB 테이블 생성
-    Base.metadata.create_all(bind=engine)
-
     # 앱 초기화
     app = FastAPI(
         title="My Chat Application",
