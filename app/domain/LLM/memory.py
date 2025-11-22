@@ -1,7 +1,7 @@
 from typing import List
 
 from langchain.memory import ConversationBufferMemory
-from langchain.memory.chat_message_histories import RedisChatMessageHistory
+from langchain_community.chat_message_histories import RedisChatMessageHistory
 from langchain.schema import AIMessage, HumanMessage
 
 from app.core.config import settings
