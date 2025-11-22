@@ -11,12 +11,9 @@ from app.domain.chatroom.schemas import (
 from app.domain.chatroom.repository import ChatRoomRepository, ChatMessageRepository
 from app.domain.chatroom.model import MessageType
 from app.core.database import SessionLocal
+from app.core.security import get_current_user_id
 
 router = APIRouter()
-
-
-def get_current_user_info():
-    return {"email": "testuser@example.com", "id": 1}
 
 
 def get_db():
@@ -31,7 +28,7 @@ def get_db():
 @router.post("/messages", response_model=SaveChatMessageResponse, status_code=status.HTTP_201_CREATED)
 async def save_chat_message(
     request: SaveChatMessageRequest,
-    user_info: dict = Depends(get_current_user_info),
+    user_id: int = Depends(get_current_user_id),
     db: Session = Depends(get_db)
 ):
     """
@@ -39,7 +36,6 @@ async def save_chat_message(
     
     사용자 또는 어시스턴트의 메시지를 데이터베이스에 저장합니다.
     """
-    user_id = user_info["id"]
     
     # 채팅방 소유자 확인
     room = ChatRoomRepository.get_by_id_and_user_id(db, request.chat_room_id, user_id)
@@ -77,7 +73,7 @@ async def save_chat_message(
 
 @router.get("/rooms", response_model=ChatRoomListResponse, status_code=status.HTTP_200_OK)
 async def get_chat_rooms(
-    user_info: dict = Depends(get_current_user_info),
+    user_id: int = Depends(get_current_user_id),
     db: Session = Depends(get_db)
 ):
     """
@@ -85,7 +81,6 @@ async def get_chat_rooms(
     
     현재 사용자의 모든 채팅방 목록을 최신순으로 반환합니다.
     """
-    user_id = user_info["id"]
     
     rooms = ChatRoomRepository.get_user_rooms(db, user_id)
     
@@ -107,7 +102,7 @@ async def get_chat_rooms(
 @router.get("/rooms/{room_id}/messages", response_model=ChatHistoryResponse, status_code=status.HTTP_200_OK)
 async def get_chat_history(
     room_id: int,
-    user_info: dict = Depends(get_current_user_info),
+    user_id: int = Depends(get_current_user_id),
     db: Session = Depends(get_db)
 ):
     """
@@ -115,7 +110,6 @@ async def get_chat_history(
     
     특정 채팅방의 모든 메시지를 시간순으로 반환합니다.
     """
-    user_id = user_info["id"]
     
     # 채팅방 소유자 확인 및 메시지 조회
     messages = ChatMessageRepository.get_by_room_id_and_user_id(db, room_id, user_id)
