@@ -1,8 +1,8 @@
 from fastapi import FastAPI, APIRouter
 from fastapi.middleware.cors import CORSMiddleware
-from app.domain.LLM import router as llm_router
-from app.domain.user import router as user_router
-from app.domain.chatroom import router as chatroom_router
+from app.domain.LLM.router import router as llm_router
+from app.domain.user.router import router as user_router
+from app.domain.chatroom.router import router as chatroom_router
 from app.core.database import engine, Base
 
 
@@ -22,6 +22,24 @@ def create_app() -> FastAPI:
         version="1.0.0"
     )
 
+
+    # 루트 경로 - 헬스 체크용
+    @app.get("/")
+    async def root():
+        return {
+            "message": "EasyThon Backend API",
+            "status": "healthy",
+            "version": "1.0.0"
+        }
+    
+    # 헬스 체크 엔드포인트
+    @app.get("/health")
+    async def health_check():
+        return {
+            "status": "healthy",
+            "service": "EasyThon Backend"
+        }
+
     # CORS 설정
     app.add_middleware(
         CORSMiddleware,
@@ -40,4 +58,6 @@ def create_app() -> FastAPI:
     app.include_router(api_router)
     return app
 
+
 app = create_app()
+

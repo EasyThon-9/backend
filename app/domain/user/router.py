@@ -187,9 +187,8 @@ async def logout(
         async for key in redis_client.scan_iter(match=f"*{user.email}*"):
             await redis_client.delete(key)
         
-        return schemas.LogoutResponse(
-            message="로그아웃되었습니다."
-        )
+        # 204 No Content는 본문을 반환하지 않음
+        return None
     except HTTPException:
         raise
     except Exception as e:
