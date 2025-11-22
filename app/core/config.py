@@ -18,11 +18,11 @@ class Settings(BaseSettings):
     CELERY_RESULT_BACKEND: str = os.getenv("CELERY_RESULT_BACKEND", "redis://redis:6379/0")
     
     # LLM 설정
-    LLM_API_KEY: str
+    LLM_API_KEY: str = os.getenv("LLM_API_KEY", "your-llm-api-key-here")
     
     # JWT 설정
-    SECRET_KEY: str
-    REFRESH_SECRET_KEY: str
+    SECRET_KEY: str = os.getenv("SECRET_KEY", "your-secret-key-here-change-in-production")
+    REFRESH_SECRET_KEY: str = os.getenv("REFRESH_SECRET_KEY", "your-refresh-secret-key-here-change-in-production")
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7

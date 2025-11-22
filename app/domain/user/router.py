@@ -119,8 +119,7 @@ async def login(
 
 @router.post(
     "/logout",
-    response_model=schemas.LogoutResponse,
-    status_code=status.HTTP_205_RESET_CONTENT,
+    status_code=status.HTTP_204_NO_CONTENT,
     summary="로그아웃",
     description="리프레시 토큰을 무효화하여 로그아웃합니다."
 )
@@ -187,9 +186,8 @@ async def logout(
         async for key in redis_client.scan_iter(match=f"*{user.email}*"):
             await redis_client.delete(key)
         
-        return schemas.LogoutResponse(
-            message="로그아웃되었습니다."
-        )
+        # 204 No Content는 본문을 반환하지 않음
+        return None
     except HTTPException:
         raise
     except Exception as e:

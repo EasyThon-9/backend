@@ -16,9 +16,23 @@
    cd your-repository
    ```
 
-2. `.env` 파일 복사 붙여넣기:
-    팀 노션의 secret file/backend 페이지 참고
-       .env 루트 디렉토리에 생성 및 노션 참고 복붙
+2. `.env` 파일 생성:
+    루트 디렉토리에 `.env` 파일을 생성하고 다음 환경 변수를 설정하세요:
+    ```env
+    # Database 설정
+    MYSQL_USER=appuser
+    MYSQL_PASSWORD=apppassword
+    MYSQL_DATABASE=easython
+    
+    # LLM API 설정 (필수)
+    LLM_API_KEY=your-llm-api-key-here
+    
+    # JWT 설정 (필수)
+    SECRET_KEY=your-secret-key-here
+    REFRESH_SECRET_KEY=your-refresh-secret-key-here
+    ```
+    
+    또는 팀 노션의 secret file/backend 페이지를 참고하여 복사 붙여넣기
 
 3. Docker Compose 실행:
    ```bash
