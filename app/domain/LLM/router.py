@@ -8,41 +8,28 @@ from app.domain.LLM.schemas import (
     GetLLMResultResponse
 )
 from app.domain.LLM.task import get_llm_message, get_gpt_feedback, get_gpt_result
-from app.core.redis import get_redis_pool
-from app.core.database import SessionLocal
+from app.core.dependencies import get_db, get_redis_client
+from app.core.security import get_current_user_id
 from app.domain.user.repository import UserRepository, ChatRoomRepository
 import redis.asyncio as redis
 
 router = APIRouter()
 
-def get_current_user_info():
-    return {"email": "testuser@example.com", "id": 1}
-
-def get_db():
-    """데이터베이스 세션 의존성"""
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
-
-async def get_redis_client() -> redis.Redis:
-    """Redis 클라이언트 의존성 (FastAPI의 의존성 주입 사용)"""
-    redis_client = await get_redis_pool()
-    try:
-        yield redis_client
-    finally:
-        # 연결을 풀에 반환 (풀링을 사용하므로 연결이 풀에 반환됨)
-        await redis_client.aclose()
-
 @router.post("/message", response_model=GetLLMMessageResponse, status_code=status.HTTP_202_ACCEPTED)
 async def request_llm_message(
     request: GetLLMMessageRequest,
-    user_info: dict = Depends(get_current_user_info), # Auth Dependency Injection
+    user_id: int = Depends(get_current_user_id),
+    db: Session = Depends(get_db),
     redis_client: redis.Redis = Depends(get_redis_client)
 ):
-    user_email = user_info["email"]
-    user_id = user_info["id"]
+    # User 조회하여 email 가져오기
+    user = UserRepository.get_by_id(db, user_id)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+    user_email = user.email
     
     # episode_id 저장
     episode_key = f"episode_id:{user_email}"
@@ -54,7 +41,7 @@ async def request_llm_message(
     count_key = f"count:{user_email}"
     await redis_client.incr(count_key)
         
-    # character_id 저장 (테스트 코드 참조)
+    # character_id 저장
     char_key = f"character_id:{user_email}"
     await redis_client.set(char_key, request.character_id)
 
@@ -72,7 +59,8 @@ async def request_llm_message(
 
 @router.get("/feedbacks", response_model=GetLLMFeedbackResponse, status_code=status.HTTP_202_ACCEPTED)
 async def request_gpt_feedback(
-    user_info: dict = Depends(get_current_user_info), # Auth Dependency Injection
+    user_id: int = Depends(get_current_user_id),
+    db: Session = Depends(get_db)
 ):
     """
     GPT의 피드백을 생성하는 API
@@ -80,7 +68,14 @@ async def request_gpt_feedback(
     현재 대화 내역을 분석하여 사용자의 응답에 대한 비판적 피드백을 생성합니다.
     Celery 태스크를 비동기로 실행하고 task_id를 반환합니다.
     """
-    user_email = user_info["email"]
+    # User 조회하여 email 가져오기
+    user = UserRepository.get_by_id(db, user_id)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+    user_email = user.email
     
     # Celery Task 실행
     task = get_gpt_feedback.delay(user_email)
@@ -90,7 +85,7 @@ async def request_gpt_feedback(
 
 @router.get("/results", response_model=GetLLMResultResponse, status_code=status.HTTP_200_OK)
 async def request_gpt_result(
-    user_info: dict = Depends(get_current_user_info), # Auth Dependency Injection
+    user_id: int = Depends(get_current_user_id),
     db: Session = Depends(get_db),
     redis_client: redis.Redis = Depends(get_redis_client)
 ):
@@ -99,8 +94,14 @@ async def request_gpt_result(
     
     Redis에서 room_id를 가져오고, GPT 결과를 생성하여 데이터베이스에 저장한 후 반환합니다.
     """
-    user_email = user_info["email"]
-    user_id = user_info["id"]
+    # User 조회하여 email 가져오기
+    user = UserRepository.get_by_id(db, user_id)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+    user_email = user.email
     
     # Redis에서 room_id 가져오기
     room_id_key = f"room_id:{user_email}"
@@ -124,14 +125,6 @@ async def request_gpt_result(
     # GPT 결과 요청 (Celery 태스크를 비동기로 실행)
     task = get_gpt_result.apply_async(args=[user_email])
     result_text = await run_in_threadpool(task.get)
-    
-    # 사용자 정보 가져오기
-    user = UserRepository.get_by_id(db, user_id)
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found"
-        )
     
     # 데이터베이스에 피드백 저장 (소유자 검증 포함)
     chat_room_updated = ChatRoomRepository.update_result(db, room_id, user_id, result_text)
