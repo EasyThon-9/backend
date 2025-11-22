@@ -17,5 +17,5 @@ celery_app.conf.update(
     enable_utc=True,
 )
 
-# 3. Task 자동 검색
-celery_app.autodiscover_tasks(['app.domain.LLM'])
+# 3. Task 명시적 import (autodiscover 대신)
+from app.domain.LLM import task  # noqa
